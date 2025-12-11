@@ -4,14 +4,18 @@
  *  Created on: Oct 02, 2020
  *  Author: Magnus Gärtner
  *  Institute: ETH Zurich, ANYbotics
+ * 
+ *  Modified on : Dec 11. 2025
+ *  Author: Hao Hung
+ *  Institute: DRIC
  */
 
 #pragma once
 
 #include "elevation_mapping/input_sources/Input.hpp"
-
-#include <XmlRpc.h>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
+#include <string>
+#include <vector>
 
 namespace elevation_mapping {
 class ElevationMapping;  // Forward declare to avoid cyclic import dependency.
@@ -26,7 +30,7 @@ class InputSourceManager {
    * @brief Constructor.
    * @param nodeHandle Used to resolve the namespace and setup the subscribers.
    */
-  explicit InputSourceManager(const ros::NodeHandle& nodeHandle);
+  explicit InputSourceManager(const rclcpp::Node::SharedPtr& nodeHandle));
 
   /**
    * @brief Configure the input sources from a configuration stored on the
@@ -39,12 +43,12 @@ class InputSourceManager {
   /**
    * @brief Configure the input sources.
    * This will configure all managed input sources.
-   * @param config The list of input source parameters.
+   * @param sourceNames  The list of input source parameters.
    * @param sourceConfigurationName The name of the input source configuration.
    * @return True if configuring was successful.
    */
-  bool configure(const XmlRpc::XmlRpcValue& config, const std::string& sourceConfigurationName);
-
+  bool configure(const std::vector<std::string>& sourceNames,
+                const std::string& sourceConfigurationName);
   /**
    * @brief Registers the corresponding callback in the elevationMap.
    * @param map The map we want to link the input sources to.
@@ -68,30 +72,39 @@ class InputSourceManager {
   std::vector<Input> sources_;
 
   //! Node handle to load.
-  ros::NodeHandle nodeHandle_;
+  rclcpp::Node::SharedPtr nodeHandle_;
 };
 
 // Template definitions
 
 template <typename... MsgT>
-bool InputSourceManager::registerCallbacks(ElevationMapping& map, std::pair<const char*, Input::CallbackT<MsgT>>... callbacks) {
-  if (sources_.empty()) {
-    ROS_WARN("Not registering any callbacks, no input sources given. Did you configure the InputSourceManager?");
-    return true;
+bool InputSourceManager::registerCallbacks(ElevationMapping& map, std::pair<const char*, Input::CallbackT<MsgT>>... callbacks) 
+{
+  if (sources_.empty()) 
+  {
+      RCLCPP_WARN(nodeHandle_->get_logger(),
+                  "Not registering any callbacks, no input sources given. Did you configure the InputSourceManager?");
+      return true;
   }
-  for (Input& source : sources_) {
+  for (Input& source : sources_) 
+  {
     bool callbackRegistered = false;
-    for (auto& callback : {callbacks...}) {
-      if (source.getType() == callback.first) {
+    for (auto& callback : {callbacks...}) 
+    {
+      if (source.getType() == callback.first) 
+      {
         source.registerCallback(map, callback.second);
         callbackRegistered = true;
       }
     }
-    if (not callbackRegistered) {
-      ROS_WARN("The configuration contains input sources of an unknown type: %s", source.getType().c_str());
-      ROS_WARN("Available types are:");
-      for (auto& callback : {callbacks...}) {
-        ROS_WARN("- %s", callback.first);
+    if (!callbackRegistered) 
+    {
+      RCLCPP_WARN(nodeHandle_->get_logger(),
+                  "The configuration contains input sources of an unknown type: %s", source.getType().c_str());
+      RCLCPP_WARN(nodeHandle_->get_logger(), "Available types are:");
+      for (auto& callback : {callbacks...}) 
+      {
+        RCLCPP_WARN(nodeHandle_->get_logger(), "- %s", callback.first);
       }
       return false;
     }
