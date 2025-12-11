@@ -4,13 +4,18 @@
  *  Created on: Jun 6, 2014
  *      Author: Péter Fankhauser, Hannes Keller
  *   Institute: ETH Zurich, ANYbotics
+ * 
+ * Modified on: Dec 11. 2025
+ *      Author: Hao Hung
+ *   Institute: DRIC
  */
 
 #pragma once
 
 // ROS
-#include <ros/ros.h>
-#include <tf/transform_listener.h>
+#include <rclcpp/rclcpp.hpp>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
 
 // Eigen
 #include <Eigen/Core>
@@ -48,7 +53,8 @@ class SensorProcessorBase {
     std::string mapFrameId_;
 
     explicit GeneralParameters(std::string robotBaseFrameId = "robot", std::string mapFrameId = "map")
-        : robotBaseFrameId_(std::move(robotBaseFrameId)), mapFrameId_(std::move(mapFrameId)) {}
+        : robotBaseFrameId_(std::move(robotBaseFrameId)), 
+          mapFrameId_(std::move(mapFrameId)) {}
   };
 
   /*!
@@ -56,7 +62,7 @@ class SensorProcessorBase {
    * @param nodeHandle the ROS node handle.
    * @param generalConfig General parameters that the sensor processor must know in order to work. // TODO (magnus) improve documentation.
    */
-  SensorProcessorBase(ros::NodeHandle& nodeHandle, const GeneralParameters& generalConfig);
+  SensorProcessorBase(rclcpp::Node::SharedPtr nodeHandle, const GeneralParameters& generalConfig);
 
   /*!
    * Destructor.
@@ -71,8 +77,10 @@ class SensorProcessorBase {
    * @param[out] variances the measurement variances expressed in the target frame.
    * @return true if successful.
    */
-  bool process(PointCloudType::ConstPtr pointCloudInput, const Eigen::Matrix<double, 6, 6>& robotPoseCovariance,
-               PointCloudType::Ptr pointCloudMapFrame, Eigen::VectorXf& variances, std::string sensorFrame);
+  bool process(PointCloudType::ConstPtr pointCloudInput, 
+               const Eigen::Matrix<double, 6, 6>& robotPoseCovariance,
+               PointCloudType::Ptr pointCloudMapFrame, 
+               Eigen::VectorXf& variances, std::string sensorFrame);
 
   /*!
    * Checks if a valid tf transformation was received since startup.
@@ -111,7 +119,8 @@ class SensorProcessorBase {
    * @param[out] variances the elevation map height variances.
    * @return true if successful.
    */
-  virtual bool computeVariances(PointCloudType::ConstPtr pointCloud, const Eigen::Matrix<double, 6, 6>& robotPoseCovariance,
+  virtual bool computeVariances(PointCloudType::ConstPtr pointCloud, 
+                                const Eigen::Matrix<double, 6, 6>& robotPoseCovariance,
                                 Eigen::VectorXf& variances) = 0;
 
   /*!
@@ -119,7 +128,7 @@ class SensorProcessorBase {
    * @param timeStamp the time stamp for the transformation.
    * @return true if successful.
    */
-  bool updateTransformations(const ros::Time& timeStamp);
+  bool updateTransformations(const rclcpp::Time& timeStamp);
 
   /*!
    * Transforms the point cloud the a target frame.
@@ -128,19 +137,23 @@ class SensorProcessorBase {
    * @param[in] targetFrame the desired target frame.
    * @return true if successful.
    */
-  bool transformPointCloud(PointCloudType::ConstPtr pointCloud, PointCloudType::Ptr pointCloudTransformed, const std::string& targetFrame);
+  bool transformPointCloud(PointCloudType::ConstPtr pointCloud, 
+                           PointCloudType::Ptr pointCloudTransformed, 
+                           const std::string& targetFrame);
 
   /*!
    * Removes points with z-coordinate above a limit in map frame.
    * @param[in/out] pointCloud the point cloud to be cropped.
    */
-  void removePointsOutsideLimits(PointCloudType::ConstPtr reference, std::vector<PointCloudType::Ptr>& pointClouds);
+  void removePointsOutsideLimits(PointCloudType::ConstPtr reference, 
+                                 std::vector<PointCloudType::Ptr>& pointClouds);
 
   //! ROS nodehandle.
-  ros::NodeHandle& nodeHandle_;
+  rclcpp::Node::SharedPtr nodeHandle_;
 
   //! TF transform listener.
-  tf::TransformListener transformListener_;
+  tf2_ros::Buffer tfBuffer_;
+  tf2_ros::TransformListener tfListener_;
 
   //! Rotation from Base to Sensor frame (C_SB)
   kindr::RotationMatrixD rotationBaseToSensor_;

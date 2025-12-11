@@ -5,9 +5,9 @@
  *  Author: Magnus Gärtner
  *  Institute: ETH Zurich, ANYbotics
  * 
- *  Modified on : Dec 11. 2025
- *  Author: Hao Hung
- *  Institute: DRIC
+ * Modified on: Dec 11. 2025
+ *      Author: Hao Hung
+ *   Institute: DRIC
  */
 
 #pragma once

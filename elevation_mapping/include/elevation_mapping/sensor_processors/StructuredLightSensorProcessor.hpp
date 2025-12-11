@@ -4,6 +4,10 @@
  *  Created on: Feb 5, 2014
  *      Author: Péter Fankhauser
  *   Institute: ETH Zurich, ANYbotics
+ * 
+ * Modified on: Dec 11. 2025
+ *      Author: Hao Hung
+ *   Institute: DRIC
  */
 
 #pragma once
@@ -22,7 +26,8 @@ class StructuredLightSensorProcessor : public SensorProcessorBase {
    * Constructor.
    * @param nodeHandle the ROS node handle.
    */
-  StructuredLightSensorProcessor(ros::NodeHandle& nodeHandle, const SensorProcessorBase::GeneralParameters& generalParameters);
+  StructuredLightSensorProcessor(rclcpp::Node::SharedPtr nodeHandle, 
+                                 const SensorProcessorBase::GeneralParameters& generalParameters);
 
   /*!
    * Destructor.
@@ -44,7 +49,8 @@ class StructuredLightSensorProcessor : public SensorProcessorBase {
    * @param[out] variances the elevation map height variances.
    * @return true if successful.
    */
-  bool computeVariances(PointCloudType::ConstPtr pointCloud, const Eigen::Matrix<double, 6, 6>& robotPoseCovariance,
+  bool computeVariances(PointCloudType::ConstPtr pointCloud, 
+                        const Eigen::Matrix<double, 6, 6>& robotPoseCovariance,
                         Eigen::VectorXf& variances) override;
 
   /*!

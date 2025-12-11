@@ -4,9 +4,15 @@
  *  Created on: Jan 4, 2014
  *      Author: Péter Fankhauser
  *	 Institute: ETH Zurich, ANYbotics
+ *
+ * Modified on: Dec 11. 2025
+ *      Author: Hao Hung
+ *   Institute: DRIC
  */
 
 #pragma once
+
+#include <limits>
 
 namespace elevation_mapping {
 

@@ -4,6 +4,10 @@
  *  Created on: Oct 06, 2020
  *  Author: Magnus Gärtner
  *  Institute: ETH Zurich, ANYbotics
+ * 
+ * Modified on: Dec 11. 2025
+ *      Author: Hao Hung
+ *   Institute: DRIC
  */
 
 #include <memory>
@@ -17,108 +21,116 @@
 
 namespace elevation_mapping {
 
-Input::Input(ros::NodeHandle nh) : nodeHandle_(nh) {}
+Input::Input(rclcpp::Node::SharedPtr nh) : nodeHandle_(nh) {}
 
-bool Input::configure(std::string name, const XmlRpc::XmlRpcValue& configuration,
+bool Input::configure(std::string name, const std::string& SourceConfigurationName,
                       const SensorProcessorBase::GeneralParameters& generalSensorProcessorParameters) {
   // Configuration Guards.
-  if (configuration.getType() != XmlRpc::XmlRpcValue::TypeStruct) {
-    ROS_ERROR(
-        "Input source must be specified as map, but is "
-        "XmlRpcType:%d.",
-        configuration.getType());
-    return false;
-  }
 
   Parameters parameters;
 
   // Check Optional enabled parameter.
-  if (configuration.hasMember("enabled")) {
-    if (configuration["enabled"].getType() != XmlRpc::XmlRpcValue::TypeBoolean) {
-      ROS_ERROR(
-          "Could not configure input source %s because parameter 'enabled' has the "
-          "wrong type.",
-          name.c_str());
+  rclcpp::Parameter param;
+  if (nodeHandle_->has_parameter(SourceConfigurationName + ".enabled")) 
+  {
+    nodeHandle_->get_parameter(SourceConfigurationName + ".enabled", param);
+    if (param.get_type() != rclcpp::ParameterType::PARAMETER_BOOL) {
+      RCLCPP_ERROR(nodeHandle_->get_logger(),
+                   "Could not configure input source %s because parameter 'enabled' has the wrong type.",
+                   name.c_str());
       return false;
     }
-
-    parameters.isEnabled_ = static_cast<bool>(configuration["enabled"]);
+    parameters.isEnabled_ = param.as_bool();
   }
 
-  // Check that configuration exist and has an appropriate type.
-  using nameAndType = std::pair<std::string, XmlRpc::XmlRpcValue::Type>;
-  for (const nameAndType& member : std::vector<nameAndType>{{"type", XmlRpc::XmlRpcValue::TypeString},
-                                                            {"topic", XmlRpc::XmlRpcValue::TypeString},
-                                                            {"queue_size", XmlRpc::XmlRpcValue::TypeInt},
-                                                            {"publish_on_update", XmlRpc::XmlRpcValue::TypeBoolean},
-                                                            {"sensor_processor", XmlRpc::XmlRpcValue::TypeStruct}}) {
-    if (!configuration.hasMember(member.first)) {
-      ROS_ERROR("Could not configure input source %s because no %s was given.", name.c_str(), member.first.c_str());
+  // Required parameters: type, topic, queue_size, publish_on_update, sensor_processor.type
+  std::vector<std::pair<std::string, rclcpp::ParameterType>> requiredParameters = {
+      {".type", rclcpp::ParameterType::PARAMETER_STRING},
+      {".topic", rclcpp::ParameterType::PARAMETER_STRING},
+      {".queue_size", rclcpp::ParameterType::PARAMETER_INTEGER},
+      {".publish_on_update", rclcpp::ParameterType::PARAMETER_BOOL},
+      {".sensor_processor.type", rclcpp::ParameterType::PARAMETER_STRING}};
+
+  for (const auto& [paramName, paramType] : requiredParameters) {
+    if (!nodeHandle_->has_parameter(SourceConfigurationName + paramName)) 
+    {
+      RCLCPP_ERROR(nodeHandle_->get_logger(),
+                   "Could not configure input source %s because parameter '%s' was not given.",
+                   name.c_str(), paramName.c_str());
       return false;
     }
-    if (configuration[member.first].getType() != member.second) {
-      ROS_ERROR(
-          "Could not configure input source %s because member %s has the "
-          "wrong type.",
-          name.c_str(), member.first.c_str());
+    nodeHandle_->get_parameter(SourceConfigurationName + paramName, param);
+    if (param.get_type() != paramType) 
+    {
+      RCLCPP_ERROR(nodeHandle_->get_logger(),
+                   "Could not configure input source %s because parameter '%s' has the wrong type.",
+                   name.c_str(), paramName.c_str());
       return false;
     }
   }
 
   parameters.name_ = name;
-  parameters.type_ = static_cast<std::string>(configuration["type"]);
-  parameters.topic_ = static_cast<std::string>(configuration["topic"]);
-  const int& queueSize = static_cast<int>(configuration["queue_size"]);
-  if (queueSize >= 0) {
-    parameters.queueSize_ = static_cast<unsigned int>(queueSize);
-  } else {
-    ROS_ERROR("The specified queue_size is negative.");
+  nodeHandle_->get_parameter(SourceConfigurationName + ".type", param);
+  parameters.type_ = param.as_string();
+
+  nodeHandle_->get_parameter(SourceConfigurationName + ".topic", param);
+  parameters.topic_ = param.as_string();
+
+  nodeHandle_->get_parameter(SourceConfigurationName + ".queue_size", param);
+  const int queueSize = param.as_int();
+  if (queueSize < 0) 
+  {
+    RCLCPP_ERROR(nodeHandle_->get_logger(), "The specified queue_size is negative.");
     return false;
   }
-  parameters.publishOnUpdate_ = static_cast<bool>(configuration["publish_on_update"]);
+  parameters.queueSize_ = static_cast<uint32_t>(queueSize);
+
+
+  nodeHandle_->get_parameter(SourceConfigurationName + ".publish_on_update", param);
+  parameters.publishOnUpdate_ = param.as_bool();
 
   parameters_.setData(parameters);
 
   // SensorProcessor
-  if (!configureSensorProcessor(name, configuration, generalSensorProcessorParameters)) {
+  if (!configureSensorProcessor(name, SourceConfigurationName, generalSensorProcessorParameters)) 
+  {
     return false;
   }
+  RCLCPP_INFO(nodeHandle_->get_logger(),
+              "Configured %s:%s @ %s (publishing_on_update: %s), using %s to process data.",
+              parameters.type_.c_str(),
+              parameters.name_.c_str(),
+              parameters.topic_.c_str(),
+              parameters.publishOnUpdate_ ? "true" : "false",
+              sensorProcessor_->getType().c_str());
 
-  ROS_DEBUG("Configured %s:%s @ %s (publishing_on_update: %s), using %s to process data.\n", parameters.type_.c_str(),
-            parameters.name_.c_str(), nodeHandle_.resolveName(parameters.topic_).c_str(), parameters.publishOnUpdate_ ? "true" : "false",
-            static_cast<std::string>(configuration["sensor_processor"]["type"]).c_str());
   return true;
 }
 
 std::string Input::getSubscribedTopic() const {
   const Parameters parameters{parameters_.getData()};
-  return nodeHandle_.resolveName(parameters.topic_);
+  return parameters.topic_;
 }
 
-bool Input::configureSensorProcessor(std::string name, const XmlRpc::XmlRpcValue& parameters,
-                                     const SensorProcessorBase::GeneralParameters& generalSensorProcessorParameters) {
-  if (!parameters["sensor_processor"].hasMember("type")) {
-    ROS_ERROR("Could not configure sensor processor of input source %s because no type was given.", name.c_str());
-    return false;
-  }
-  if (parameters["sensor_processor"]["type"].getType() != XmlRpc::XmlRpcValue::TypeString) {
-    ROS_ERROR(
-        "Could not configure sensor processor of input source %s because the member 'type' has the "
-        "wrong type.",
-        name.c_str());
-    return false;
-  }
-  std::string sensorType = static_cast<std::string>(parameters["sensor_processor"]["type"]);
+bool Input::configureSensorProcessor(std::string name, const std::string& parameter,
+                                     const SensorProcessorBase::GeneralParameters& generalSensorProcessorParameters)  
+{
+  rclcpp::Parameter param;
+  nodeHandle_->get_parameter(parameter + ".sensor_processor.type", param);
+  std::string sensorType = param.as_string();
+
   if (sensorType == "structured_light") {
-    sensorProcessor_ = std::make_unique<StructuredLightSensorProcessor>(nodeHandle_, generalSensorProcessorParameters);
+    sensorProcessor_ = std::make_shared<StructuredLightSensorProcessor>(nodeHandle_, generalSensorProcessorParameters);
   } else if (sensorType == "stereo") {
-    sensorProcessor_ = std::make_unique<StereoSensorProcessor>(nodeHandle_, generalSensorProcessorParameters);
+    sensorProcessor_ = std::make_shared<StereoSensorProcessor>(nodeHandle_, generalSensorProcessorParameters);
   } else if (sensorType == "laser") {
-    sensorProcessor_ = std::make_unique<LaserSensorProcessor>(nodeHandle_, generalSensorProcessorParameters);
+    sensorProcessor_ = std::make_shared<LaserSensorProcessor>(nodeHandle_, generalSensorProcessorParameters);
   } else if (sensorType == "perfect") {
-    sensorProcessor_ = std::make_unique<PerfectSensorProcessor>(nodeHandle_, generalSensorProcessorParameters);
+    sensorProcessor_ = std::make_shared<PerfectSensorProcessor>(nodeHandle_, generalSensorProcessorParameters);
   } else {
-    ROS_ERROR("The sensor type %s is not available.", sensorType.c_str());
+    RCLCPP_ERROR(nodeHandle_->get_logger(),
+                 "The sensor type %s is not available for input source %s.",
+                 sensorType.c_str(), name.c_str());
     return false;
   }
 

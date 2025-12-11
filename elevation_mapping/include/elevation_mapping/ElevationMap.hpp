@@ -4,6 +4,10 @@
  *  Created on: Feb 5, 2014
  *      Author: Péter Fankhauser
  *	 Institute: ETH Zurich, ANYbotics
+ *
+ * Modified on: Dec 11. 2025
+ *      Author: Hao Hung
+ *   Institute: DRIC
  */
 
 #pragma once
@@ -22,7 +26,7 @@
 #include <boost/thread/recursive_mutex.hpp>
 
 // ROS
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 // Elevation Mapping
 #include "elevation_mapping/PointXYZRGBConfidenceRatio.hpp"
@@ -39,7 +43,7 @@ class ElevationMap {
   /*!
    * Constructor.
    */
-  explicit ElevationMap(ros::NodeHandle nodeHandle);
+  explicit ElevationMap(rclcpp::Node::SharedPtr nodeHandle);
 
   /*!
    * Destructor.
@@ -59,11 +63,13 @@ class ElevationMap {
    * Add new measurements to the elevation map.
    * @param pointCloud the point cloud data.
    * @param pointCloudVariances the corresponding variances of the point cloud data.
-   * @param timeStamp the time of the input point cloud.
+   * @param timeStamp the ros time of the input point cloud.
    * @param transformationSensorToMap
    * @return true if successful.
    */
-  bool add(PointCloudType::Ptr pointCloud, Eigen::VectorXf& pointCloudVariances, const ros::Time& timeStamp,
+  bool add(PointCloudType::Ptr pointCloud, 
+           Eigen::VectorXf& pointCloudVariances, 
+           const rclcpp::Time& timeStamp timeStamp,
            const Eigen::Affine3d& transformationSensorToMap);
 
   /*!
@@ -72,11 +78,14 @@ class ElevationMap {
    * @param horizontalVarianceUpdateX the variance update in horizontal x-direction.
    * @param horizontalVarianceUpdateY the variance update in horizontal y-direction.
    * @param horizontalVarianceUpdateXY the correlated variance update in horizontal xy-direction.
-   * @param time the time of the update.
+   * @param time the ros time of the update.
    * @return true if successful.
    */
-  bool update(const grid_map::Matrix& varianceUpdate, const grid_map::Matrix& horizontalVarianceUpdateX,
-              const grid_map::Matrix& horizontalVarianceUpdateY, const grid_map::Matrix& horizontalVarianceUpdateXY, const ros::Time& time);
+  bool update(const grid_map::Matrix& varianceUpdate, 
+              const grid_map::Matrix& horizontalVarianceUpdateX,
+              const grid_map::Matrix& horizontalVarianceUpdateY, 
+              const grid_map::Matrix& horizontalVarianceUpdateXY, 
+              const rclcpp::Time& time);
 
   /*!
    * Triggers the fusion of the entire elevation map.
@@ -90,7 +99,8 @@ class ElevationMap {
    * @param length the sides lengths of the area to fuse.
    * @return true if successful.
    */
-  bool fuseArea(const Eigen::Vector2d& position, const Eigen::Array2d& length);
+  bool fuseArea(const Eigen::Vector2d& position, 
+                const Eigen::Array2d& length);
 
   /*!
    * Clears all data of the elevation map (data and time).
@@ -103,7 +113,7 @@ class ElevationMap {
    * @param transformationSensorToMap
    * @param updatedTime
    */
-  void visibilityCleanup(const ros::Time& updatedTime);
+  void visibilityCleanup(const rclcpp::Time& updatedTime);
 
   /*!
    * Move the grid map w.r.t. to the grid map frame.
@@ -159,13 +169,13 @@ class ElevationMap {
    * Gets the time of last map update.
    * @return time of the last map update.
    */
-  ros::Time getTimeOfLastUpdate();
+  rclcpp::Time getTimeOfLastUpdate();
 
   /*!
    * Gets the time of last map fusion.
    * @return time of the last map fusion.
    */
-  ros::Time getTimeOfLastFusion();
+  rclcpp::Time getTimeOfLastFusion();
 
   /*!
    * Get the pose of the elevation map frame w.r.t. the inertial parent frame of the robot (e.g. world, map etc.).
@@ -180,7 +190,8 @@ class ElevationMap {
    * @param position the position of the data point in the parent frame of the robot.
    * @return true if successful, false if no valid data available.
    */
-  bool getPosition3dInRobotParentFrame(const Eigen::Array2i& index, kindr::Position3D& position);
+  bool getPosition3dInRobotParentFrame(const Eigen::Array2i& index, 
+                                       kindr::Position3D& position);
 
   /*!
    * Gets the fused data mutex.
@@ -207,10 +218,10 @@ class ElevationMap {
   const std::string& getFrameId();
 
   /*!
-   * Set the timestamp of the raw and fused elevation map.
+   * Set the ros timestamp of the raw and fused elevation map.
    * @param timestmap to set.
    */
-  void setTimestamp(ros::Time timestamp);
+  void setTimestamp(rclcpp::Time timestamp);
 
   /*!
    * If the raw elevation map has subscribers.
@@ -238,8 +249,9 @@ class ElevationMap {
    * @param lengthInXSubmap Length of the submap in X direction.
    * @param lengthInYSubmap Length of the submap in Y direction.
    */
-  void setRawSubmapHeight(const grid_map::Position& initPosition, float mapHeight, float variance, double lengthInXSubmap,
-                          double lengthInYSubmap);
+  void setRawSubmapHeight(const grid_map::Position& initPosition, 
+                          float mapHeight, float variance, 
+                          double lengthInXSubmap, double lengthInYSubmap);
 
   friend class ElevationMapping;
 
@@ -274,7 +286,7 @@ class ElevationMap {
   static float cumulativeDistributionFunction(float x, float mean, float standardDeviation);
 
   //! ROS nodehandle.
-  ros::NodeHandle nodeHandle_;
+  rclcpp::Node::SharedPtr nodeHandle_;
 
   //! Raw elevation map as grid map.
   grid_map::GridMap rawMap_;
@@ -298,8 +310,8 @@ class ElevationMap {
   kindr::HomTransformQuatD pose_;
 
   //! ROS publishers. Publishing of the raw elevation map is handled by the postprocessing pool.
-  ros::Publisher elevationMapFusedPublisher_;
-  ros::Publisher visibilityCleanupMapPublisher_;
+  rclcpp::Publisher<grid_map_msgs::msg::GridMap>::SharedPtr elevationMapFusedPublisher_;
+  rclcpp::Publisher<grid_map_msgs::msg::GridMap>::SharedPtr visibilityCleanupMapPublisher_;
 
   //! Mutex lock for fused map.
   boost::recursive_mutex fusedMapMutex_;
@@ -311,10 +323,10 @@ class ElevationMap {
   boost::recursive_mutex visibilityCleanupMapMutex_;
 
   //! Underlying map subscriber.
-  ros::Subscriber underlyingMapSubscriber_;
+  rclcpp::Subscription<grid_map_msgs::msg::GridMap>::SharedPtr underlyingMapSubscriber_;
 
   //! Initial ros time
-  ros::Time initialTime_;
+  rclcpp::Time initialTime_;
 
   //! Parameters. Are set through the ElevationMapping class.
   struct Parameters {

@@ -4,6 +4,10 @@
  *  Created on: Feb 5, 2014
  *      Author: Péter Fankhauser
  *	 Institute: ETH Zurich, ANYbotics
+ *
+ * Modified on: Dec 11. 2025
+ *      Author: Hao Hung
+ *   Institute: DRIC
  */
 
 #pragma once
@@ -18,7 +22,7 @@
 #include <kindr/Core>
 
 // ROS
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 namespace elevation_mapping {
 
@@ -36,7 +40,7 @@ class RobotMotionMapUpdater {
   /*!
    * Constructor.
    */
-  explicit RobotMotionMapUpdater(ros::NodeHandle nodeHandle);
+  explicit RobotMotionMapUpdater(rclcpp::Node::SharedPtr nodeHandle);
 
   /*!
    * Destructor.
@@ -55,10 +59,12 @@ class RobotMotionMapUpdater {
    * @param[in] map the elevation map to be updated.
    * @param[in] robotPose the current pose.
    * @param[in] robotPoseCovariance the current pose covariance matrix.
-   * @param[in] time the time of the current update.
+   * @param[in] time the ros time of the current update.
    * @return true if successful.
    */
-  bool update(ElevationMap& map, const Pose& robotPose, const PoseCovariance& robotPoseCovariance, const ros::Time& time);
+  bool update(ElevationMap& map, const Pose& robotPose, 
+              const PoseCovariance& robotPoseCovariance, 
+              const rclcpp::Time& time);
 
  private:
   /*!
@@ -81,10 +87,10 @@ class RobotMotionMapUpdater {
   bool computeRelativeCovariance(const Pose& robotPose, const ReducedCovariance& reducedCovariance, ReducedCovariance& relativeCovariance);
 
   //! ROS nodehandle.
-  ros::NodeHandle nodeHandle_;
+  rclcpp::Node::SharedPtr nodeHandle_;
 
   //! Time of the previous update.
-  ros::Time previousUpdateTime_;
+  rclcpp::Time previousUpdateTime_;
 
   //! Previous robot pose.
   Pose previousRobotPose_;

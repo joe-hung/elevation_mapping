@@ -4,6 +4,10 @@
  *  Created on: Sep 15, 2014
  *      Author: Péter Fankhauser
  *   Institute: ETH Zurich, ANYbotics
+ * 
+ * Modified on: Dec 11. 2025
+ *      Author: Hao Hung
+ *   Institute: DRIC
  */
 
 #pragma once
@@ -22,7 +26,8 @@ class LaserSensorProcessor : public SensorProcessorBase {
    * Constructor.
    * @param nodeHandle the ROS node handle.
    */
-  LaserSensorProcessor(ros::NodeHandle& nodeHandle, const SensorProcessorBase::GeneralParameters& generalParameters);
+  LaserSensorProcessor(rclcpp::Node::SharedPtr nodeHandle, 
+    const SensorProcessorBase::GeneralParameters& generalParameters);
 
   /*!
    * Destructor.

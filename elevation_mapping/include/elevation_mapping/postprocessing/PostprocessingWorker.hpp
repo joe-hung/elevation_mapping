@@ -4,6 +4,10 @@
  *  Created on: Dec. 21, 2020
  *      Author: Yoshua Nava
  *   Institute: ANYbotics
+ * 
+ * Modified on: Dec 11. 2025
+ *      Author: Hao Hung
+ *   Institute: DRIC
  */
 
 #pragma once
@@ -29,7 +33,7 @@ class PostprocessingWorker {
  public:
   using GridMap = grid_map::GridMap;
 
-  explicit PostprocessingWorker(ros::NodeHandle nodeHandle);
+  explicit PostprocessingWorker(rclcpp::Node::SharedPtr nodeHandle);
 
   /*! @name Accessors */
   ///@{

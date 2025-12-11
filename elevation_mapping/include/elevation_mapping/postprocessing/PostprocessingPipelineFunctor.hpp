@@ -4,11 +4,15 @@
  *  Created on: Sep. 14, 2020
  *      Author: Magnus Gärtner
  *   Institute: ETH Zurich, ANYbotics
+ * 
+ * Modified on: Dec 11. 2025
+ *      Author: Hao Hung
+ *   Institute: DRIC
  */
 
 #pragma once
 
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include <filters/filter_chain.hpp>
 #include <grid_map_core/GridMap.hpp>
 
@@ -38,7 +42,7 @@ class PostprocessingPipelineFunctor {
    * @brief Explicit Constructor.
    * @param nodeHandle The node handle to read parameters from and to publish output data.
    */
-  explicit PostprocessingPipelineFunctor(ros::NodeHandle& nodeHandle);
+  explicit PostprocessingPipelineFunctor(rclcpp::Node::SharedPtr nodeHandle);
 
   /**
    * @brief Destructor.
@@ -70,10 +74,10 @@ class PostprocessingPipelineFunctor {
   void readParameters();
 
   //! ROS nodehandle.
-  ros::NodeHandle& nodeHandle_;
+  rclcpp::Node::SharedPtr nodeHandle_;
 
   //! Grid map publisher.
-  ros::Publisher publisher_;
+  rclcpp::Publisher<grid_map::GridMap>::SharedPtr publisher_;
 
   //! Filter chain.
   filters::FilterChain<grid_map::GridMap> filterChain_;
